@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EuroWatch — Mappa live &amp; Monitor Italia-Europa</title>
+<meta name="description" content="Dashboard live con mappa interattiva: guerre, energia, logistica, trasporti, elezioni e mercati — focus Italia ed Europa">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --bg:#0b0e14; --panel:#121722; --panel2:#0f1420; --border:#1f2937;
+  --text:#e5e9f0; --muted:#8b95a7; --accent:#e63946; --amber:#f4a261;
+  --green:#2a9d8f; --blue:#4a90d9; --violet:#9b5de5; --gold:#e9c46a; --cyan:#48cae4;
+  --mono:'Consolas','Menlo',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
+a{color:inherit;text-decoration:none}
+a:hover .item-title{color:#fff;text-decoration:underline}
+
+header{position:sticky;top:0;z-index:1200;background:rgba(11,14,20,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{font-size:1.15rem;font-weight:800;letter-spacing:.5px}
+.logo .dot{color:var(--accent);animation:blink 1.6s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.logo small{display:block;font-size:.62rem;font-weight:400;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.hdr-stat{font-family:var(--mono);font-size:.68rem;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:5px 10px}
+.hdr-stat b{color:var(--gold)}
+#threat-badge b{color:var(--accent)}
+.clock{font-family:var(--mono);font-size:.95rem;color:var(--gold);margin-left:auto;text-align:right}
+.clock .date{display:block;font-size:.65rem;color:var(--muted)}
+.btn{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 14px;border-radius:6px;cursor:pointer;font-size:.8rem}
+.btn:hover{border-color:var(--muted)}
+#last-update{font-size:.68rem;color:var(--muted)}
+
+/* ticker */
+.ticker-wrap{background:var(--panel2);border-bottom:1px solid var(--border);overflow:hidden;white-space:nowrap;padding:6px 0}
+.ticker{display:inline-block;animation:scroll 45s linear infinite;font-family:var(--mono);font-size:.82rem}
+.ticker-wrap:hover .ticker{animation-play-state:paused}
+@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.tk{margin:0 22px;color:var(--muted)}
+.tk b{color:var(--text);font-weight:600}
+.up{color:var(--green)} .down{color:var(--accent)}
+
+/* map */
+#map-section{position:relative;border-bottom:1px solid var(--border)}
+#map{height:520px;width:100%;background:#0b0e14;z-index:1}
+.zone-chips{display:flex;gap:8px;flex-wrap:wrap;padding:10px 18px;background:var(--panel2);border-bottom:1px solid var(--border)}
+.chip{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:.74rem;cursor:pointer;white-space:nowrap}
+.chip:hover{border-color:var(--gold);color:var(--gold)}
+.chip .lvl{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.map-legend{position:absolute;bottom:14px;left:14px;z-index:1000;background:rgba(11,14,20,.88);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.68rem;line-height:1.9}
+.map-legend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+.map-count{position:absolute;top:14px;right:14px;z-index:1000;background:rgba(11,14,20,.88);border:1px solid var(--border);border-radius:8px;padding:8px 13px;font-family:var(--mono);font-size:.7rem;color:var(--muted)}
+.map-count b{color:var(--gold)}
+.pulse-marker{border-radius:50%;box-shadow:0 0 0 rgba(230,57,70,.5);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(230,57,70,.55)}70%{box-shadow:0 0 0 14px rgba(230,57,70,0)}100%{box-shadow:0 0 0 0 rgba(230,57,70,0)}}
+.leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px}
+.leaflet-popup-tip{background:var(--panel)}
+.leaflet-popup-content{margin:10px 14px;font-size:.78rem;max-width:290px}
+.pp-title{font-weight:700;font-size:.85rem;margin-bottom:6px;color:var(--gold)}
+.pp-item{display:block;padding:5px 0;border-top:1px solid var(--border);line-height:1.35;color:var(--text)}
+.pp-item:hover{color:#fff;text-decoration:underline}
+.pp-item small{display:block;color:var(--muted);font-family:var(--mono);font-size:.62rem;margin-top:2px}
+
+main{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;padding:14px 18px;max-width:1700px;margin:0 auto}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-height:280px}
+.panel-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--panel2)}
+.panel-head h2{font-size:.85rem;letter-spacing:1px;text-transform:uppercase;font-weight:700}
+.panel-head .bar{width:4px;height:18px;border-radius:2px}
+.count{margin-left:auto;font-family:var(--mono);font-size:.7rem;color:var(--muted)}
+.panel-body{padding:6px 0;overflow-y:auto;max-height:420px;flex:1}
+.panel-body::-webkit-scrollbar{width:6px}
+.panel-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+.item{display:block;padding:9px 14px;border-bottom:1px solid rgba(31,41,55,.5)}
+.item:hover{background:rgba(255,255,255,.03)}
+.item-title{font-size:.86rem;line-height:1.35;color:var(--text)}
+.item-meta{display:flex;gap:10px;margin-top:4px;font-size:.66rem;color:var(--muted);font-family:var(--mono)}
+.item-meta .src{color:var(--gold)}
+.fresh{display:inline-block;background:var(--accent);color:#fff;font-size:.58rem;padding:1px 6px;border-radius:3px;margin-right:6px;vertical-align:1px;font-family:var(--mono)}
+.tg-badge{display:inline-block;background:var(--cyan);color:#06222b;font-size:.58rem;padding:1px 6px;border-radius:3px;margin-right:6px;vertical-align:1px;font-family:var(--mono);font-weight:700}
+.rd-badge{display:inline-block;background:#ff4500;color:#fff;font-size:.58rem;padding:1px 6px;border-radius:3px;margin-right:6px;vertical-align:1px;font-family:var(--mono);font-weight:700}
+
+.state{padding:30px 16px;text-align:center;color:var(--muted);font-size:.8rem}
+.spinner{width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;margin:0 auto 12px;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err-retry{margin-top:10px}
+
+.mkt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;padding:12px 14px}
+.mkt-card{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px}
+.mkt-card .lbl{font-size:.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.mkt-card .val{font-family:var(--mono);font-size:1.05rem;font-weight:600;margin-top:3px}
+.mkt-card .sub{font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-top:2px}
+
+footer{padding:16px 18px 26px;text-align:center;font-size:.68rem;color:var(--muted);border-top:1px solid var(--border);line-height:1.7}
+@media(max-width:700px){main{grid-template-columns:1fr}.clock{display:none}#map{height:380px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">EURO<span style="color:var(--accent)">WATCH</span> <span class="dot">●</span><small>Italia · Europa · Live Monitor</small></div>
+  <span class="hdr-stat" id="threat-badge">MINACCIA: <b id="threat-level">—</b></span>
+  <span class="hdr-stat">ZONE ATTIVE: <b id="zone-count">—</b></span>
+  <button class="btn" onclick="loadAll()">⟳ Aggiorna</button>
+  <span id="last-update"></span>
+  <div class="clock"><span id="clock-time">--:--:--</span><span class="date" id="clock-date"></span></div>
+</header>
+
+<div class="ticker-wrap"><div class="ticker" id="ticker"><span class="tk">Caricamento mercati…</span></div></div>
+
+<div class="zone-chips" id="zone-chips"></div>
+
+<div id="map-section">
+  <div id="map"></div>
+  <div class="map-count" id="map-count">Geolocalizzazione notizie…</div>
+  <div class="map-legend">
+    <span class="dot" style="background:var(--accent)"></span>Guerra &amp; Sicurezza<br>
+    <span class="dot" style="background:var(--gold)"></span>Energia<br>
+    <span class="dot" style="background:var(--blue)"></span>Logistica &amp; Trasporti<br>
+    <span class="dot" style="background:var(--violet)"></span>Elezioni &amp; Politica<br>
+    <span class="dot" style="background:var(--green)"></span>Altro / Europa
+  </div>
+</div>
+
+<main>
+  <section class="panel" style="grid-column:1/-1">
+    <div class="panel-head"><span class="bar" style="background:var(--gold)"></span><h2>📈 Mercati &amp; Energia — quotazioni</h2><span class="count" id="mkt-time"></span></div>
+    <div class="mkt-grid" id="mkt-grid"><div class="state" style="grid-column:1/-1"><div class="spinner"></div>Caricamento quotazioni…</div></div>
+  </section>
+
+  <section class="panel" id="p-flash"></section>
+  <section class="panel" id="p-guerra"></section>
+  <section class="panel" id="p-energia"></section>
+  <section class="panel" id="p-logistica"></section>
+  <section class="panel" id="p-elezioni"></section>
+  <section class="panel" id="p-europa"></section>
+  <section class="panel" id="p-mercati"></section>
+  <section class="panel" id="p-reddit"></section>
+</main>
+
+<footer>
+  EuroWatch — aggregatore automatico di fonti pubbliche: ANSA, Politico Europe, EurActiv, ShippingItaly, Telegram (Estero 24H, Italia 24H), Reddit, Frankfurter/BCE, Stooq. Mappa © OpenStreetMap / CARTO.<br>
+  I titoli rimandano alle fonti originali. Contenuti social non verificati: verificare sempre sulla fonte. Aggiornamento automatico ogni 10 minuti. Solo uso personale/informativo.
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+'use strict';
+
+/* ================= CORS proxy chain ================= */
+const PROXIES = [
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+];
+
+async function fetchText(url, timeout = 12000, direct = true) {
+  const tries = [...(direct ? [url] : []), ...PROXIES.map(p => p(url))];
+  for (const t of tries) {
+    try {
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), timeout);
+      const r = await fetch(t, { signal: ctrl.signal });
+      clearTimeout(to);
+      if (!r.ok) continue;
+      const txt = await r.text();
+      if (txt && txt.length > 50) return txt;
+    } catch (e) { /* next */ }
+  }
+  throw new Error('unreachable: ' + url);
+}
+
+/* ================= RSS / Atom ================= */
+function parseRss(xmlText, sourceName) {
+  const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+  if (doc.querySelector('parsererror')) throw new Error('bad xml');
+  const items = [...doc.querySelectorAll('item, entry')].map(it => {
+    const q = s => it.querySelector(s)?.textContent?.trim() || '';
+    let link = q('link');
+    if (!link || link.startsWith('<')) link = it.querySelector('link')?.getAttribute('href') || link;
+    return {
+      title: q('title'),
+      link,
+      date: new Date(q('pubDate') || q('published') || q('updated') || 0),
+      source: sourceName
+    };
+  }).filter(i => i.title);
+  if (!items.length) throw new Error('no items');
+  return items;
+}
+
+async function getFeed(url, sourceName) {
+  try {
+    return parseRss(await fetchText(url), sourceName);
+  } catch (e) {
+    const r = await fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(url));
+    const j = await r.json();
+    if (j.status !== 'ok') throw new Error('rss2json fail');
+    return j.items.map(i => ({ title: i.title, link: i.link, date: new Date(i.pubDate), source: sourceName }));
+  }
+}
+
+/* ================= Telegram (anteprima web t.me/s/) ================= */
+async function getTelegram(channel, sourceName) {
+  const html = await fetchText('https://t.me/s/' + channel, 12000, false); // solo via proxy (CORS)
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const msgs = [...doc.querySelectorAll('.tgme_widget_message')].map(m => {
+    const txtEl = m.querySelector('.tgme_widget_message_text');
+    if (!txtEl) return null;
+    let text = txtEl.textContent.replace(/\s+/g, ' ').trim();
+    text = text.replace(/👉\s*Unisciti.*$/i, '').replace(/#NEW/gi, '').trim();
+    if (text.length < 25) return null;
+    const post = m.getAttribute('data-post');
+    const timeEl = m.querySelector('time[datetime]');
+    return {
+      title: text.length > 180 ? text.slice(0, 177) + '…' : text,
+      link: post ? 'https://t.me/' + post : 'https://t.me/s/' + channel,
+      date: timeEl ? new Date(timeEl.getAttribute('datetime')) : new Date(),
+      source: sourceName, tg: true
+    };
+  }).filter(Boolean);
+  if (!msgs.length) throw new Error('no tg messages');
+  return msgs.reverse(); // più recenti prima
+}
+
+/* ================= Reddit ================= */
+async function getReddit(sub, sourceName) {
+  try {
+    return (await getFeed('https://www.reddit.com/r/' + sub + '/.rss', sourceName)).map(i => ({ ...i, rd: true }));
+  } catch (e) {
+    const txt = await fetchText('https://www.reddit.com/r/' + sub + '/hot.json?limit=25', 12000, false);
+    const j = JSON.parse(txt);
+    return j.data.children.filter(c => !c.data.stickied).map(c => ({
+      title: c.data.title,
+      link: 'https://www.reddit.com' + c.data.permalink,
+      date: new Date(c.data.created_utc * 1000),
+      source: sourceName, rd: true
+    }));
+  }
+}
+
+/* ================= Configurazione sezioni ================= */
+const KW = {
+  guerra: /guerr|ucrain|russi|kiev|kyiv|mosca|nato|missil|drone|droni|raid|attacc|difesa|militar|israel|gaza|iran|hezbollah|houthi|sanzion|cessate|fronte|offensiv|armi|patriot|esercito|blocco navale|hormuz|zelensky|putin|idf|war|strike|defen[cs]e|missile|ceasefire|sanction|troops|army/i,
+  energia: /energi|gas\b|petroli|greggio|brent|ttf|nuclear|rinnovabil|eolic|fotovoltaic|solar|elettric|metano|gnl|lng|eni\b|enel|snam|terna|carburant|benzin|diesel|oil|pipeline|gasdotto|centrale|bolletta|barile|power grid|electricity|renewabl/i,
+  logistica: /logistic|porto|porti|portual|cargo|container|nave|navi|navale|marittim|petrolier|spedizion|trasport|ferrovi|treni|treno|autotrasport|camion|aeroport|volo|voli|aere|suez|canale|stretto|rotte|hub|interporto|dogana|corridoio|supply chain|shipping|freight|rail|tanker|vessel|tir\b/i,
+  elezioni: /elezion|elettoral|voto|votant|urne|seggi|ballottaggio|referendum|sondagg|candidat|coalizion|partit|premier|parlament|governo|senato|camera|regionali|comunali|europee|election|poll|ballot|vote|president/i,
+  mercati: /borsa|mercat|spread|btp|bund|bce|ecb|fed\b|inflazion|pil\b|tass[oi]|rating|piazza affari|ftse|mib|dax|listin|obbligazion|titoli|azion|dollaro|banca|banche|manovra|debito|stock|bond|market|gdp|inflation/i
+};
+
+const FEEDS = {
+  ansaMondo:    ['https://www.ansa.it/sito/notizie/mondo/mondo_rss.xml', 'ANSA Mondo'],
+  ansaEconomia: ['https://www.ansa.it/sito/notizie/economia/economia_rss.xml', 'ANSA Economia'],
+  ansaPolitica: ['https://www.ansa.it/sito/notizie/politica/politica_rss.xml', 'ANSA Politica'],
+  ansaEuropa:   ['https://www.ansa.it/europa/notizie/rss.xml', 'ANSA Europa'],
+  ansaMare:     ['https://www.ansa.it/mare/notizie/rss.xml', 'ANSA Mare'],
+  politico:     ['https://www.politico.eu/feed/', 'Politico EU'],
+  euractivEnergy:['https://www.euractiv.com/sections/energy-environment/feed/', 'EurActiv Energia'],
+  euractivPolitics:['https://www.euractiv.com/sections/politics/feed/', 'EurActiv'],
+  shipping:     ['https://www.shippingitaly.it/feed/', 'ShippingItaly'],
+};
+
+const SECTIONS = [
+  { id:'p-guerra',   icon:'🔴', title:'Guerra & Sicurezza', color:'var(--accent)', cat:'guerra',
+    load:()=>multi([()=>getFeed(...FEEDS.ansaMondo),()=>getFeed(...FEEDS.politico)]), kw:KW.guerra },
+  { id:'p-energia',  icon:'⚡', title:'Energia', color:'var(--gold)', cat:'energia',
+    load:()=>multi([()=>getFeed(...FEEDS.euractivEnergy),()=>getFeed(...FEEDS.ansaEconomia)]), kw:KW.energia },
+  { id:'p-logistica',icon:'🚢', title:'Logistica & Trasporti', color:'var(--blue)', cat:'logistica',
+    load:()=>multi([()=>getFeed(...FEEDS.shipping),()=>getFeed(...FEEDS.ansaMare),()=>getFeed(...FEEDS.ansaEconomia)]), kw:KW.logistica },
+  { id:'p-elezioni', icon:'🗳️', title:'Elezioni & Politica', color:'var(--violet)', cat:'elezioni',
+    load:()=>multi([()=>getFeed(...FEEDS.ansaPolitica),()=>getFeed(...FEEDS.politico)]), kw:KW.elezioni },
+  { id:'p-europa',   icon:'🇪🇺', title:'Europa & UE', color:'var(--green)', cat:'europa',
+    load:()=>multi([()=>getFeed(...FEEDS.ansaEuropa),()=>getFeed(...FEEDS.euractivPolitics)]), kw:null },
+  { id:'p-mercati',  icon:'📊', title:'Mercati — notizie', color:'var(--amber)', cat:'mercati',
+    load:()=>multi([()=>getFeed(...FEEDS.ansaEconomia)]), kw:KW.mercati },
+  { id:'p-flash',    icon:'⚡', title:'Flash — Telegram OSINT', color:'var(--cyan)', cat:'flash',
+    load:()=>multi([()=>getTelegram('estero24hnews','Estero 24H'),()=>getTelegram('italia24hlive','Italia 24H')]), kw:null },
+  { id:'p-reddit',   icon:'👽', title:'Reddit — community', color:'#ff4500', cat:'reddit',
+    load:()=>multi([()=>getReddit('europe','r/europe'),()=>getReddit('geopolitics','r/geopolitics'),()=>getReddit('italy','r/italy')]), kw:null },
+];
+
+async function multi(fns) {
+  const res = await Promise.allSettled(fns.map(f => f()));
+  return res.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
+}
+
+/* ================= Gazetteer per la mappa ================= */
+const GAZ = [
+  [/kiev|kyiv|ucrain|ukrain/i,'Kiev / Ucraina',50.45,30.52],
+  [/kharkiv|charkiv/i,'Kharkiv',49.99,36.23],
+  [/odessa|odesa/i,'Odessa',46.48,30.72],
+  [/donetsk|donbass|luhansk|zaporizh/i,'Donbass',48.0,37.8],
+  [/crimea|sebastopoli|sevastopol/i,'Crimea',44.95,34.1],
+  [/mosca|moscow|cremlino|kremlin|russi/i,'Mosca / Russia',55.75,37.62],
+  [/bielorussi|belarus|minsk/i,'Minsk',53.9,27.56],
+  [/kaliningrad|baltic|baltico|lituani|estoni|lettoni/i,'Baltico',54.7,20.5],
+  [/finlandi|helsinki/i,'Helsinki',60.17,24.94],
+  [/svezia|swedish|stoccolma|gotland/i,'Stoccolma',59.33,18.07],
+  [/polonia|polish|varsavia|warsaw/i,'Varsavia',52.23,21.01],
+  [/germani|berlino|berlin|tedesc/i,'Berlino',52.52,13.4],
+  [/francia|french|parigi|paris|francese/i,'Parigi',48.86,2.35],
+  [/regno unito|london|londra|british|inghilterra/i,'Londra',51.51,-0.13],
+  [/spagna|madrid|spagnol/i,'Madrid',40.42,-3.7],
+  [/bruxelles|brussels|commissione ue|consiglio ue|unione europea|\beu\b/i,'Bruxelles / UE',50.85,4.35],
+  [/\broma\b|\brome\b|italia|italian|\bitaly\b|meloni|palazzo chigi|quirinale|montecitorio/i,'Roma / Italia',41.9,12.5],
+  [/milano|piazza affari/i,'Milano',45.46,9.19],
+  [/genova|trieste|gioia tauro|livorno|la spezia/i,'Porti italiani',44.41,8.93],
+  [/vienna|austria/i,'Vienna',48.21,16.37],
+  [/ungheria|budapest|orb[aá]n|magyar/i,'Budapest',47.5,19.04],
+  [/romania|bucarest/i,'Bucarest',44.43,26.1],
+  [/serbia|belgrado|vucic/i,'Belgrado',44.79,20.45],
+  [/kosovo|pristina/i,'Kosovo',42.66,21.17],
+  [/bosnia|sarajevo/i,'Sarajevo',43.86,18.41],
+  [/grecia|atene|greek/i,'Atene',37.98,23.73],
+  [/turchia|ankara|istanbul|erdogan|bosforo/i,'Turchia',39.93,32.86],
+  [/moldavia|moldova|chisinau|transnistria/i,'Moldova',47.01,28.86],
+  [/georgia\b|tbilisi/i,'Tbilisi',41.72,44.79],
+  [/armenia|azerbaijan|azerbaigian|karabakh|baku|yerevan/i,'Caucaso',40.28,46.0],
+  [/israel|tel aviv|gerusalemme|jerusalem|idf\b/i,'Israele',31.78,35.22],
+  [/gaza|rafah|striscia/i,'Gaza',31.42,34.37],
+  [/cisgiordania|west bank|ramallah/i,'Cisgiordania',31.9,35.2],
+  [/libano|lebanon|beirut|hezbollah|bint jbeil/i,'Libano',33.89,35.5],
+  [/siria|syria|damasco|damascus/i,'Siria',33.51,36.29],
+  [/iran|teheran|tehran|irgc|pasdaran/i,'Iran',35.69,51.39],
+  [/hormuz/i,'Stretto di Hormuz',26.6,56.25],
+  [/iraq|baghdad/i,'Iraq',33.31,44.37],
+  [/yemen|houthi|sanaa/i,'Yemen',15.35,44.21],
+  [/mar rosso|red sea|bab.el.mandeb/i,'Mar Rosso',14.5,42.5],
+  [/suez/i,'Canale di Suez',30.46,32.35],
+  [/egitto|cairo|egypt/i,'Egitto',30.04,31.24],
+  [/arabia saudita|riyadh|saudi/i,'Arabia Saudita',24.71,46.68],
+  [/emirati|dubai|abu dhabi/i,'Emirati',24.45,54.38],
+  [/qatar|doha/i,'Qatar',25.29,51.53],
+  [/libia|libya|tripoli|bengasi/i,'Libia',32.89,13.19],
+  [/tunisia|tunisi/i,'Tunisia',36.81,10.18],
+  [/algeria|algeri/i,'Algeria',36.75,3.06],
+  [/marocco|rabat|sahara occidentale/i,'Marocco',34.02,-6.84],
+  [/sudan|khartoum|darfur|rsf\b/i,'Sudan',15.5,32.56],
+  [/sahel|mali\b|niger\b|burkina/i,'Sahel',16.0,0.0],
+  [/somalia|mogadiscio|shabaab/i,'Somalia',2.05,45.32],
+  [/etiopia|addis abeba/i,'Etiopia',9.02,38.75],
+  [/washington|casa bianca|white house|stati uniti|\busa\b|trump|pentagono|centcom/i,'Washington / USA',38.9,-77.04],
+  [/new york|wall street|nasdaq/i,'New York',40.71,-74.01],
+  [/canada|ottawa/i,'Canada',45.42,-75.7],
+  [/messico|mexico/i,'Messico',19.43,-99.13],
+  [/venezuela|caracas|maduro|essequibo/i,'Venezuela',10.48,-66.9],
+  [/panama/i,'Panama',8.98,-79.52],
+  [/brasile|brasilia|lula/i,'Brasile',-15.79,-47.88],
+  [/per[uù]\b|lima\b|fujimori/i,'Perù',-12.05,-77.04],
+  [/argentina|buenos aires|milei/i,'Argentina',-34.6,-58.38],
+  [/cina|beijing|pechino|chinese|xi jinping/i,'Pechino / Cina',39.9,116.4],
+  [/taiwan|taipei/i,'Taiwan',25.03,121.57],
+  [/mar cinese|south china sea|filippine|manila/i,'Mar Cinese Merid.',15.0,115.0],
+  [/corea del nord|pyongyang|kim jong/i,'Corea del Nord',39.02,125.75],
+  [/corea del sud|seoul|seul/i,'Seoul',37.57,126.98],
+  [/giappone|tokyo|japan/i,'Tokyo',35.68,139.69],
+  [/india\b|delhi|modi\b/i,'India',28.61,77.21],
+  [/pakistan|islamabad|kashmir/i,'Pakistan',33.69,73.05],
+  [/afghanistan|kabul|taleban|taliban/i,'Afghanistan',34.53,69.17],
+  [/groenlandia|greenland|artico|arctic/i,'Artico',72.0,-40.0],
+  [/norvegia|oslo/i,'Oslo',59.91,10.75],
+];
+
+const CAT_COLOR = { guerra:'#e63946', energia:'#e9c46a', logistica:'#4a90d9', elezioni:'#9b5de5', mercati:'#f4a261', europa:'#2a9d8f', flash:'#48cae4', reddit:'#ff4500', altro:'#2a9d8f' };
+
+function categorize(title) {
+  if (KW.guerra.test(title)) return 'guerra';
+  if (KW.energia.test(title)) return 'energia';
+  if (KW.logistica.test(title)) return 'logistica';
+  if (KW.elezioni.test(title)) return 'elezioni';
+  if (KW.mercati.test(title)) return 'mercati';
+  return 'altro';
+}
+
+/* ================= Mappa ================= */
+const HOT_ZONES = [
+  ['🇺🇦 Ucraina',50.45,30.52,'#e63946',5],
+  ['🇮🇱 Israele/Libano',32.5,35.3,'#e63946',6],
+  ['🇮🇷 Iran/Hormuz',30.0,53.0,'#e63946',5],
+  ['🌊 Mar Rosso',14.5,42.5,'#f4a261',5],
+  ['🇪🇺 Bruxelles',50.85,4.35,'#2a9d8f',6],
+  ['🇮🇹 Roma',41.9,12.5,'#2a9d8f',6],
+  ['⚡ TTF Amsterdam',52.37,4.9,'#e9c46a',7],
+  ['🚢 Suez',30.46,32.35,'#4a90d9',6],
+];
+
+let map, newsLayer;
+function initMap() {
+  map = L.map('map', { worldCopyJump: true, minZoom: 2 }).setView([46, 15], 4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 12
+  }).addTo(map);
+  newsLayer = L.layerGroup().addTo(map);
+
+  // chips zone calde
+  document.getElementById('zone-chips').innerHTML = HOT_ZONES.map(([n, la, lo, c, z], i) =>
+    `<span class="chip" onclick="map.flyTo([${la},${lo}],${z})"><span class="lvl" style="background:${c}"></span>${n}</span>`
+  ).join('') + `<span class="chip" onclick="map.flyTo([46,15],4)">🌍 Vista Europa</span>`;
+}
+
+const STORE = {};   // items per sezione (per la mappa)
+
+function updateMap() {
+  if (!map) return;
+  const seen = new Set();
+  const all = Object.values(STORE).flat().filter(i => {
+    const k = i.title.toLowerCase().slice(0, 60);
+    if (seen.has(k)) return false; seen.add(k); return true;
+  });
+  // raggruppa per località
+  const groups = new Map();
+  for (const item of all) {
+    let matches = 0;
+    for (const [rx, name, lat, lon] of GAZ) {
+      if (matches >= 2) break;
+      if (rx.test(item.title)) {
+        matches++;
+        if (!groups.has(name)) groups.set(name, { name, lat, lon, items: [] });
+        groups.get(name).items.push(item);
+      }
+    }
+  }
+  newsLayer.clearLayers();
+  let zones = 0;
+  for (const g of groups.values()) {
+    g.items.sort((a, b) => b.date - a.date);
+    const top = g.items.slice(0, 6);
+    const cats = {};
+    top.forEach(i => { const c = categorize(i.title); cats[c] = (cats[c] || 0) + 1; });
+    const domCat = Object.entries(cats).sort((a, b) => b[1] - a[1])[0][0];
+    const color = CAT_COLOR[domCat];
+    const fresh = top.some(i => (Date.now() - i.date) < 3 * 3600e3);
+    const r = Math.min(7 + g.items.length, 16);
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="${fresh ? 'pulse-marker' : ''}" style="width:${r * 2}px;height:${r * 2}px;border-radius:50%;background:${color}55;border:2px solid ${color}"></div>`,
+      iconSize: [r * 2, r * 2], iconAnchor: [r, r]
+    });
+    const popup = `<div class="pp-title">📍 ${g.name} · ${g.items.length} notizie</div>` +
+      top.map(i => `<a class="pp-item" href="${i.link}" target="_blank" rel="noopener">${escapeHtml(i.title.slice(0, 110))}${i.title.length > 110 ? '…' : ''}<small>${i.source} · ${isNaN(i.date) ? '' : fmtAgo(i.date)}</small></a>`).join('');
+    L.marker([g.lat, g.lon], { icon }).bindPopup(popup).addTo(newsLayer);
+    zones++;
+  }
+  document.getElementById('map-count').innerHTML = `<b>${zones}</b> zone attive · <b>${all.length}</b> notizie`;
+  document.getElementById('zone-count').textContent = zones;
+  // livello minaccia: notizie di guerra fresche (<6h)
+  const warFresh = all.filter(i => categorize(i.title) === 'guerra' && (Date.now() - i.date) < 6 * 3600e3).length;
+  const lvl = warFresh > 25 ? 'CRITICO' : warFresh > 12 ? 'ELEVATO' : warFresh > 5 ? 'MEDIO' : 'BASSO';
+  document.getElementById('threat-level').textContent = lvl + ' (' + warFresh + ')';
+}
+
+/* ================= Rendering pannelli ================= */
+const fmtTime = d => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+const fmtAgo = d => {
+  const m = Math.floor((Date.now() - d) / 60000);
+  if (m < 1) return 'ora';
+  if (m < 60) return m + ' min fa';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + ' h fa';
+  return Math.floor(h / 24) + ' g fa';
+};
+const escapeHtml = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function panelSkeleton(sec) {
+  const el = document.getElementById(sec.id);
+  el.innerHTML = `
+    <div class="panel-head"><span class="bar" style="background:${sec.color}"></span>
+      <h2>${sec.icon} ${sec.title}</h2><span class="count"></span></div>
+    <div class="panel-body"><div class="state"><div class="spinner"></div>Caricamento…</div></div>`;
+}
+
+function renderPanel(sec, items) {
+  const el = document.getElementById(sec.id);
+  const body = el.querySelector('.panel-body');
+  el.querySelector('.count').textContent = items.length + ' notizie';
+  body.innerHTML = items.map(i => {
+    const isFresh = (Date.now() - i.date) < 2 * 3600e3;
+    const badge = i.tg ? '<span class="tg-badge">TG</span>' : i.rd ? '<span class="rd-badge">R</span>' : (isFresh ? '<span class="fresh">NEW</span>' : '');
+    return `<a class="item" href="${i.link}" target="_blank" rel="noopener">
+      <div class="item-title">${badge}${escapeHtml(i.title)}</div>
+      <div class="item-meta"><span class="src">${i.source}</span><span>${isNaN(i.date) ? '' : fmtAgo(i.date)}</span></div>
+    </a>`;
+  }).join('') || '<div class="state">Nessuna notizia rilevante.</div>';
+}
+
+function renderError(sec) {
+  document.getElementById(sec.id).querySelector('.panel-body').innerHTML = `
+    <div class="state">⚠️ Fonti non raggiungibili.<br>
+    <button class="btn err-retry" onclick='loadSection(${JSON.stringify(sec.id)})'>Riprova</button></div>`;
+}
+
+async function loadSection(id) {
+  const sec = SECTIONS.find(s => s.id === id);
+  panelSkeleton(sec);
+  let items;
+  try { items = await sec.load(); } catch (e) { items = []; }
+  if (!items.length) { renderError(sec); return; }
+  const seen = new Set();
+  items = items.filter(i => { const k = i.title.toLowerCase().slice(0, 60); if (seen.has(k)) return false; seen.add(k); return true; });
+  let filtered = sec.kw ? items.filter(i => sec.kw.test(i.title)) : items;
+  if (filtered.length < 4) filtered = items;
+  filtered.sort((a, b) => b.date - a.date);
+  STORE[id] = filtered.slice(0, 40);
+  renderPanel(sec, filtered.slice(0, 25));
+  updateMap();
+}
+
+/* ================= Mercati ================= */
+const FX = [['USD','EUR/USD'],['GBP','EUR/GBP'],['CHF','EUR/CHF'],['PLN','EUR/PLN'],['JPY','EUR/JPY']];
+const STOOQ = [
+  ['^fmib','FTSE MIB','idx'],['^dax','DAX','idx'],['^cac','CAC 40','idx'],['^spx','S&P 500','idx'],
+  ['cb.f','Brent ($/bbl)','cmd'],['ng.f','Gas Henry Hub','cmd'],['gc.f','Oro ($/oz)','cmd']
+];
+
+async function loadMarkets() {
+  const grid = document.getElementById('mkt-grid');
+  const cards = [];
+  try {
+    const [now, prev] = await Promise.all([
+      fetch('https://api.frankfurter.dev/v1/latest?base=EUR&symbols=' + FX.map(f => f[0]).join(',')).then(r => r.json()),
+      fetch('https://api.frankfurter.dev/v1/' + new Date().getFullYear() + '-01-02?base=EUR&symbols=' + FX.map(f => f[0]).join(',')).then(r => r.json()).catch(() => null)
+    ]);
+    for (const [sym, label] of FX) {
+      const v = now.rates[sym];
+      let sub = 'BCE · ' + now.date;
+      if (prev && prev.rates[sym]) {
+        const pct = (v - prev.rates[sym]) / prev.rates[sym] * 100;
+        sub = `<span class="${pct >= 0 ? 'up' : 'down'}">${pct >= 0 ? '▲' : '▼'} ${pct.toFixed(2)}% YTD</span>`;
+      }
+      cards.push({ label, val: v.toFixed(sym === 'JPY' ? 2 : 4), sub });
+    }
+    document.getElementById('mkt-time').textContent = 'BCE ' + now.date;
+  } catch (e) { /* fx failed */ }
+  try {
+    const csv = await fetchText('https://stooq.com/q/l/?s=' + STOOQ.map(s => s[0]).join(',') + '&f=sd2t2ohlcv&h&e=csv');
+    for (const line of csv.trim().split('\n').slice(1)) {
+      const c = line.split(',');
+      const sym = (c[0] || '').toLowerCase();
+      const close = parseFloat(c[6]), open = parseFloat(c[3]);
+      const def = STOOQ.find(s => s[0].toLowerCase() === sym);
+      if (!def || isNaN(close)) continue;
+      let sub = c[1] || '';
+      if (!isNaN(open) && open > 0) {
+        const pct = (close - open) / open * 100;
+        sub = `<span class="${pct >= 0 ? 'up' : 'down'}">${pct >= 0 ? '▲' : '▼'} ${pct.toFixed(2)}%</span> ${c[1] || ''}`;
+      }
+      cards.push({ label: def[1], val: close.toLocaleString('it-IT', { maximumFractionDigits: 2 }), sub });
+    }
+  } catch (e) { /* stooq failed */ }
+
+  if (!cards.length) {
+    grid.innerHTML = '<div class="state" style="grid-column:1/-1">⚠️ Quotazioni non disponibili. <button class="btn err-retry" onclick="loadMarkets()">Riprova</button></div>';
+    return;
+  }
+  grid.innerHTML = cards.map(c => `<div class="mkt-card"><div class="lbl">${c.label}</div><div class="val">${c.val}</div><div class="sub">${c.sub}</div></div>`).join('');
+  const tk = cards.map(c => `<span class="tk">${c.label} <b>${c.val}</b> ${c.sub}</span>`).join('');
+  document.getElementById('ticker').innerHTML = tk + tk;
+}
+
+/* ================= Orologio e avvio ================= */
+function tickClock() {
+  const n = new Date();
+  document.getElementById('clock-time').textContent = n.toLocaleTimeString('it-IT');
+  document.getElementById('clock-date').textContent = n.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+setInterval(tickClock, 1000); tickClock();
+
+function loadAll() {
+  document.getElementById('last-update').textContent = 'agg. ' + fmtTime(new Date());
+  loadMarkets();
+  SECTIONS.forEach(s => loadSection(s.id));
+}
+
+initMap();
+loadAll();
+setInterval(loadAll, 10 * 60 * 1000);
+</script>
+</body>
+</html>
