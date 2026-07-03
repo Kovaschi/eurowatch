@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EuroWatch — Mappa live &amp; Monitor Italia-Europa</title>
 <meta name="description" content="Dashboard live con mappa interattiva: guerre, energia, logistica, trasporti, elezioni e mercati — focus Italia ed Europa">
+<meta name="theme-color" content="#0b0e14">
+<meta property="og:title" content="EuroWatch — Live Monitor Italia &amp; Europa">
+<meta property="og:description" content="Mappa live: guerre, energia, logistica, elezioni, mercati. Focus Italia ed Europa.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="it_IT">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://api.allorigins.win">
+<link rel="preconnect" href="https://basemaps.cartocdn.com">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 :root{
@@ -18,8 +28,18 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,'Segoe UI'
 a{color:inherit;text-decoration:none}
 a:hover .item-title{color:#fff;text-decoration:underline}
 
+/* breaking banner */
+#breaking{display:none;align-items:center;gap:10px;background:linear-gradient(90deg,#7f1d1d,#b91c1c);color:#fff;padding:8px 16px;font-size:.85rem;border-bottom:1px solid #dc2626}
+#breaking.show{display:flex}
+#breaking .bk-tag{background:#fff;color:#b91c1c;font-family:var(--mono);font-weight:800;font-size:.62rem;padding:2px 8px;border-radius:4px;letter-spacing:1px;animation:blink 1.2s infinite;white-space:nowrap}
+#breaking a{flex:1;line-height:1.3;min-width:0}
+#breaking a:hover{text-decoration:underline}
+#breaking .bk-close{cursor:pointer;font-size:1rem;padding:0 6px;opacity:.8}
+#breaking .bk-close:hover{opacity:1}
+
 header{position:sticky;top:0;z-index:1200;background:rgba(11,14,20,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.logo{font-size:1.15rem;font-weight:800;letter-spacing:.5px}
+.logo{font-size:1.15rem;font-weight:800;letter-spacing:.5px;display:flex;align-items:center;gap:9px}
+.logo img{width:30px;height:30px;border-radius:7px}
 .logo .dot{color:var(--accent);animation:blink 1.6s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 .logo small{display:block;font-size:.62rem;font-weight:400;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
@@ -44,10 +64,15 @@ header{position:sticky;top:0;z-index:1200;background:rgba(11,14,20,.95);backdrop
 /* map */
 #map-section{position:relative;border-bottom:1px solid var(--border)}
 #map{height:520px;width:100%;background:#0b0e14;z-index:1}
-.zone-chips{display:flex;gap:8px;flex-wrap:wrap;padding:10px 18px;background:var(--panel2);border-bottom:1px solid var(--border)}
-.chip{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:.74rem;cursor:pointer;white-space:nowrap}
+.zone-chips{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;padding:10px 18px;background:var(--panel2);border-bottom:1px solid var(--border);scrollbar-width:thin}
+.chip{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:.74rem;cursor:pointer;white-space:nowrap;flex:0 0 auto}
 .chip:hover{border-color:var(--gold);color:var(--gold)}
 .chip .lvl{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.chip.active{border-color:var(--gold);color:var(--gold);background:rgba(233,196,106,.08)}
+.map-filters{position:absolute;top:14px;left:56px;z-index:1000;display:flex;gap:6px;flex-wrap:wrap;max-width:70%}
+.mf{background:rgba(11,14,20,.88);border:1px solid var(--border);border-radius:16px;padding:4px 12px;font-size:.68rem;cursor:pointer;color:var(--muted)}
+.mf:hover{color:var(--text)}
+.mf.on{color:#fff;border-color:currentColor}
 .map-legend{position:absolute;bottom:14px;left:14px;z-index:1000;background:rgba(11,14,20,.88);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.68rem;line-height:1.9}
 .map-legend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
 .map-count{position:absolute;top:14px;right:14px;z-index:1000;background:rgba(11,14,20,.88);border:1px solid var(--border);border-radius:8px;padding:8px 13px;font-family:var(--mono);font-size:.7rem;color:var(--muted)}
@@ -57,6 +82,7 @@ header{position:sticky;top:0;z-index:1200;background:rgba(11,14,20,.95);backdrop
 .leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px}
 .leaflet-popup-tip{background:var(--panel)}
 .leaflet-popup-content{margin:10px 14px;font-size:.78rem;max-width:290px}
+.leaflet-tooltip{background:var(--panel2);color:var(--gold);border:1px solid var(--border);font-family:var(--mono);font-size:.7rem}
 .pp-title{font-weight:700;font-size:.85rem;margin-bottom:6px;color:var(--gold)}
 .pp-item{display:block;padding:5px 0;border-top:1px solid var(--border);line-height:1.35;color:var(--text)}
 .pp-item:hover{color:#fff;text-decoration:underline}
@@ -68,6 +94,7 @@ main{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1
 .panel-head h2{font-size:.85rem;letter-spacing:1px;text-transform:uppercase;font-weight:700}
 .panel-head .bar{width:4px;height:18px;border-radius:2px}
 .count{margin-left:auto;font-family:var(--mono);font-size:.7rem;color:var(--muted)}
+.cache-note{font-family:var(--mono);font-size:.62rem;color:var(--amber);padding:4px 14px;background:rgba(244,162,97,.07);border-bottom:1px solid var(--border)}
 .panel-body{padding:6px 0;overflow-y:auto;max-height:420px;flex:1}
 .panel-body::-webkit-scrollbar{width:6px}
 .panel-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -93,13 +120,29 @@ main{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1
 .mkt-card .sub{font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-top:2px}
 
 footer{padding:16px 18px 26px;text-align:center;font-size:.68rem;color:var(--muted);border-top:1px solid var(--border);line-height:1.7}
-@media(max-width:700px){main{grid-template-columns:1fr}.clock{display:none}#map{height:380px}}
+
+@media(max-width:700px){
+  main{grid-template-columns:1fr;padding:10px}
+  .clock{display:none}
+  #map{height:62vh;min-height:340px}
+  header{padding:8px 12px;gap:8px}
+  .hdr-stat{font-size:.6rem;padding:4px 7px}
+  .map-filters{left:52px;max-width:62%}
+  .map-legend{display:none}
+  .panel-body{max-height:360px}
+}
 </style>
 </head>
 <body>
 
+<div id="breaking" role="alert">
+  <span class="bk-tag">⚠ BREAKING</span>
+  <a id="bk-link" href="#" target="_blank" rel="noopener"></a>
+  <span class="bk-close" onclick="dismissBreaking()" title="Chiudi">✕</span>
+</div>
+
 <header>
-  <div class="logo">EURO<span style="color:var(--accent)">WATCH</span> <span class="dot">●</span><small>Italia · Europa · Live Monitor</small></div>
+  <div class="logo"><img src="icon.svg" alt="EuroWatch"><span>EURO<span style="color:var(--accent)">WATCH</span> <span class="dot">●</span><small>Italia · Europa · Live Monitor</small></span></div>
   <span class="hdr-stat" id="threat-badge">MINACCIA: <b id="threat-level">—</b></span>
   <span class="hdr-stat">ZONE ATTIVE: <b id="zone-count">—</b></span>
   <button class="btn" onclick="loadAll()">⟳ Aggiorna</button>
@@ -113,6 +156,7 @@ footer{padding:16px 18px 26px;text-align:center;font-size:.68rem;color:var(--mut
 
 <div id="map-section">
   <div id="map"></div>
+  <div class="map-filters" id="map-filters"></div>
   <div class="map-count" id="map-count">Geolocalizzazione notizie…</div>
   <div class="map-legend">
     <span class="dot" style="background:var(--accent)"></span>Guerra &amp; Sicurezza<br>
@@ -140,7 +184,7 @@ footer{padding:16px 18px 26px;text-align:center;font-size:.68rem;color:var(--mut
 </main>
 
 <footer>
-  EuroWatch — aggregatore automatico di fonti pubbliche: ANSA, Politico Europe, EurActiv, ShippingItaly, Telegram (Estero 24H, Italia 24H), Reddit, Frankfurter/BCE, Stooq. Mappa © OpenStreetMap / CARTO.<br>
+  EuroWatch v3 — aggregatore automatico di fonti pubbliche: ANSA, Politico Europe, EurActiv, ShippingItaly, Telegram (Estero 24H, Italia 24H), Reddit, Frankfurter/BCE, Stooq, CoinGecko. Mappa © OpenStreetMap / CARTO.<br>
   I titoli rimandano alle fonti originali. Contenuti social non verificati: verificare sempre sulla fonte. Aggiornamento automatico ogni 10 minuti. Solo uso personale/informativo.
 </footer>
 
@@ -168,6 +212,25 @@ async function fetchText(url, timeout = 12000, direct = true) {
     } catch (e) { /* next */ }
   }
   throw new Error('unreachable: ' + url);
+}
+
+/* ================= Cache locale (fallback offline / fonti giù) ================= */
+function saveCache(key, items) {
+  try {
+    localStorage.setItem('ew-' + key, JSON.stringify({
+      t: Date.now(),
+      items: items.map(i => ({ ...i, date: +i.date }))
+    }));
+  } catch (e) { /* storage pieno: ignora */ }
+}
+function loadCache(key, maxAgeH = 48) {
+  try {
+    const raw = localStorage.getItem('ew-' + key);
+    if (!raw) return null;
+    const j = JSON.parse(raw);
+    if (Date.now() - j.t > maxAgeH * 3600e3) return null;
+    return { t: j.t, items: j.items.map(i => ({ ...i, date: new Date(i.date) })) };
+  } catch (e) { return null; }
 }
 
 /* ================= RSS / Atom ================= */
@@ -202,7 +265,7 @@ async function getFeed(url, sourceName) {
 
 /* ================= Telegram (anteprima web t.me/s/) ================= */
 async function getTelegram(channel, sourceName) {
-  const html = await fetchText('https://t.me/s/' + channel, 12000, false); // solo via proxy (CORS)
+  const html = await fetchText('https://t.me/s/' + channel, 12000, false);
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const msgs = [...doc.querySelectorAll('.tgme_widget_message')].map(m => {
     const txtEl = m.querySelector('.tgme_widget_message_text');
@@ -220,7 +283,7 @@ async function getTelegram(channel, sourceName) {
     };
   }).filter(Boolean);
   if (!msgs.length) throw new Error('no tg messages');
-  return msgs.reverse(); // più recenti prima
+  return msgs.reverse();
 }
 
 /* ================= Reddit ================= */
@@ -384,6 +447,15 @@ const HOT_ZONES = [
   ['🚢 Suez',30.46,32.35,'#4a90d9',6],
 ];
 
+const MAP_FILTERS = [
+  ['tutte','Tutte','#8b95a7'],
+  ['guerra','🔴 Guerra','#e63946'],
+  ['energia','⚡ Energia','#e9c46a'],
+  ['logistica','🚢 Logistica','#4a90d9'],
+  ['elezioni','🗳️ Elezioni','#9b5de5'],
+];
+let mapFilter = 'tutte';
+
 let map, newsLayer;
 function initMap() {
   map = L.map('map', { worldCopyJump: true, minZoom: 2 }).setView([46, 15], 4);
@@ -392,24 +464,36 @@ function initMap() {
   }).addTo(map);
   newsLayer = L.layerGroup().addTo(map);
 
-  // chips zone calde
-  document.getElementById('zone-chips').innerHTML = HOT_ZONES.map(([n, la, lo, c, z], i) =>
+  document.getElementById('zone-chips').innerHTML = HOT_ZONES.map(([n, la, lo, c, z]) =>
     `<span class="chip" onclick="map.flyTo([${la},${lo}],${z})"><span class="lvl" style="background:${c}"></span>${n}</span>`
   ).join('') + `<span class="chip" onclick="map.flyTo([46,15],4)">🌍 Vista Europa</span>`;
+
+  renderMapFilters();
 }
 
-const STORE = {};   // items per sezione (per la mappa)
+function renderMapFilters() {
+  document.getElementById('map-filters').innerHTML = MAP_FILTERS.map(([k, label, color]) =>
+    `<span class="mf ${mapFilter === k ? 'on' : ''}" style="${mapFilter === k ? 'color:' + color : ''}" onclick="setMapFilter('${k}')">${label}</span>`
+  ).join('');
+}
+function setMapFilter(k) { mapFilter = k; renderMapFilters(); updateMap(); }
 
-function updateMap() {
-  if (!map) return;
+const STORE = {};
+
+function dedupe(arr) {
   const seen = new Set();
-  const all = Object.values(STORE).flat().filter(i => {
+  return arr.filter(i => {
     const k = i.title.toLowerCase().slice(0, 60);
     if (seen.has(k)) return false; seen.add(k); return true;
   });
-  // raggruppa per località
+}
+
+function updateMap() {
+  if (!map) return;
+  const all = dedupe(Object.values(STORE).flat());
+  const shown = mapFilter === 'tutte' ? all : all.filter(i => categorize(i.title) === mapFilter);
   const groups = new Map();
-  for (const item of all) {
+  for (const item of shown) {
     let matches = 0;
     for (const [rx, name, lat, lon] of GAZ) {
       if (matches >= 2) break;
@@ -438,15 +522,41 @@ function updateMap() {
     });
     const popup = `<div class="pp-title">📍 ${g.name} · ${g.items.length} notizie</div>` +
       top.map(i => `<a class="pp-item" href="${i.link}" target="_blank" rel="noopener">${escapeHtml(i.title.slice(0, 110))}${i.title.length > 110 ? '…' : ''}<small>${i.source} · ${isNaN(i.date) ? '' : fmtAgo(i.date)}</small></a>`).join('');
-    L.marker([g.lat, g.lon], { icon }).bindPopup(popup).addTo(newsLayer);
+    L.marker([g.lat, g.lon], { icon })
+      .bindTooltip(`${g.name} (${g.items.length})`, { direction: 'top', offset: [0, -r] })
+      .bindPopup(popup).addTo(newsLayer);
     zones++;
   }
-  document.getElementById('map-count').innerHTML = `<b>${zones}</b> zone attive · <b>${all.length}</b> notizie`;
+  document.getElementById('map-count').innerHTML = `<b>${zones}</b> zone attive · <b>${shown.length}</b> notizie${mapFilter !== 'tutte' ? ' · filtro: ' + mapFilter : ''}`;
   document.getElementById('zone-count').textContent = zones;
-  // livello minaccia: notizie di guerra fresche (<6h)
+
   const warFresh = all.filter(i => categorize(i.title) === 'guerra' && (Date.now() - i.date) < 6 * 3600e3).length;
   const lvl = warFresh > 25 ? 'CRITICO' : warFresh > 12 ? 'ELEVATO' : warFresh > 5 ? 'MEDIO' : 'BASSO';
   document.getElementById('threat-level').textContent = lvl + ' (' + warFresh + ')';
+
+  updateBreaking(all);
+}
+
+/* ================= Breaking banner ================= */
+function updateBreaking(all) {
+  const el = document.getElementById('breaking');
+  const candidates = all
+    .filter(i => categorize(i.title) === 'guerra' && (Date.now() - i.date) < 45 * 60000 && !isNaN(i.date))
+    .sort((a, b) => b.date - a.date);
+  if (!candidates.length) { el.classList.remove('show'); return; }
+  const top = candidates[0];
+  const key = top.title.slice(0, 60);
+  if (sessionStorage.getItem('ew-bk-dismissed') === key) return;
+  const a = document.getElementById('bk-link');
+  a.href = top.link;
+  a.textContent = top.title + '  — ' + top.source + ', ' + fmtAgo(top.date);
+  el.dataset.key = key;
+  el.classList.add('show');
+}
+function dismissBreaking() {
+  const el = document.getElementById('breaking');
+  sessionStorage.setItem('ew-bk-dismissed', el.dataset.key || '');
+  el.classList.remove('show');
 }
 
 /* ================= Rendering pannelli ================= */
@@ -469,10 +579,12 @@ function panelSkeleton(sec) {
     <div class="panel-body"><div class="state"><div class="spinner"></div>Caricamento…</div></div>`;
 }
 
-function renderPanel(sec, items) {
+function renderPanel(sec, items, cacheTime) {
   const el = document.getElementById(sec.id);
-  const body = el.querySelector('.panel-body');
   el.querySelector('.count').textContent = items.length + ' notizie';
+  el.querySelector('.cache-note')?.remove();
+  const body = el.querySelector('.panel-body');
+  if (cacheTime) body.insertAdjacentHTML('beforebegin', `<div class="cache-note">⚠️ Fonti momentaneamente giù — dati salvati (${fmtAgo(cacheTime)})</div>`);
   body.innerHTML = items.map(i => {
     const isFresh = (Date.now() - i.date) < 2 * 3600e3;
     const badge = i.tg ? '<span class="tg-badge">TG</span>' : i.rd ? '<span class="rd-badge">R</span>' : (isFresh ? '<span class="fresh">NEW</span>' : '');
@@ -494,13 +606,26 @@ async function loadSection(id) {
   panelSkeleton(sec);
   let items;
   try { items = await sec.load(); } catch (e) { items = []; }
-  if (!items.length) { renderError(sec); return; }
-  const seen = new Set();
-  items = items.filter(i => { const k = i.title.toLowerCase().slice(0, 60); if (seen.has(k)) return false; seen.add(k); return true; });
+
+  if (!items.length) {
+    const cached = loadCache(id);
+    if (cached && cached.items.length) {
+      STORE[id] = cached.items;
+      renderPanel(sec, cached.items.slice(0, 25), cached.t);
+      updateMap();
+    } else {
+      renderError(sec);
+    }
+    return;
+  }
+
+  items = dedupe(items);
   let filtered = sec.kw ? items.filter(i => sec.kw.test(i.title)) : items;
   if (filtered.length < 4) filtered = items;
   filtered.sort((a, b) => b.date - a.date);
-  STORE[id] = filtered.slice(0, 40);
+  const top = filtered.slice(0, 40);
+  STORE[id] = top;
+  saveCache(id, top);
   renderPanel(sec, filtered.slice(0, 25));
   updateMap();
 }
@@ -508,8 +633,8 @@ async function loadSection(id) {
 /* ================= Mercati ================= */
 const FX = [['USD','EUR/USD'],['GBP','EUR/GBP'],['CHF','EUR/CHF'],['PLN','EUR/PLN'],['JPY','EUR/JPY']];
 const STOOQ = [
-  ['^fmib','FTSE MIB','idx'],['^dax','DAX','idx'],['^cac','CAC 40','idx'],['^spx','S&P 500','idx'],
-  ['cb.f','Brent ($/bbl)','cmd'],['ng.f','Gas Henry Hub','cmd'],['gc.f','Oro ($/oz)','cmd']
+  ['^fmib','FTSE MIB'],['^dax','DAX'],['^cac','CAC 40'],['^spx','S&P 500'],
+  ['cb.f','Brent ($/bbl)'],['ng.f','Gas Henry Hub'],['gc.f','Oro ($/oz)']
 ];
 
 async function loadMarkets() {
@@ -530,7 +655,18 @@ async function loadMarkets() {
       cards.push({ label, val: v.toFixed(sym === 'JPY' ? 2 : 4), sub });
     }
     document.getElementById('mkt-time').textContent = 'BCE ' + now.date;
-  } catch (e) { /* fx failed */ }
+  } catch (e) { /* fx giù */ }
+  try {
+    const cg = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=eur&include_24hr_change=true').then(r => r.json());
+    for (const [id, label] of [['bitcoin','Bitcoin (€)'],['ethereum','Ethereum (€)']]) {
+      if (!cg[id]) continue;
+      const ch = cg[id].eur_24h_change;
+      cards.push({
+        label, val: '€' + cg[id].eur.toLocaleString('it-IT', { maximumFractionDigits: 0 }),
+        sub: ch == null ? '' : `<span class="${ch >= 0 ? 'up' : 'down'}">${ch >= 0 ? '▲' : '▼'} ${ch.toFixed(2)}% 24h</span>`
+      });
+    }
+  } catch (e) { /* coingecko giù */ }
   try {
     const csv = await fetchText('https://stooq.com/q/l/?s=' + STOOQ.map(s => s[0]).join(',') + '&f=sd2t2ohlcv&h&e=csv');
     for (const line of csv.trim().split('\n').slice(1)) {
@@ -546,24 +682,40 @@ async function loadMarkets() {
       }
       cards.push({ label: def[1], val: close.toLocaleString('it-IT', { maximumFractionDigits: 2 }), sub });
     }
-  } catch (e) { /* stooq failed */ }
+  } catch (e) { /* stooq giù */ }
 
   if (!cards.length) {
-    grid.innerHTML = '<div class="state" style="grid-column:1/-1">⚠️ Quotazioni non disponibili. <button class="btn err-retry" onclick="loadMarkets()">Riprova</button></div>';
+    const cached = loadCache('mkt', 72);
+    if (cached && cached.items.length) {
+      renderMarkets(cached.items, cached.t);
+    } else {
+      grid.innerHTML = '<div class="state" style="grid-column:1/-1">⚠️ Quotazioni non disponibili. <button class="btn err-retry" onclick="loadMarkets()">Riprova</button></div>';
+    }
     return;
   }
-  grid.innerHTML = cards.map(c => `<div class="mkt-card"><div class="lbl">${c.label}</div><div class="val">${c.val}</div><div class="sub">${c.sub}</div></div>`).join('');
+  saveCache('mkt', cards.map(c => ({ ...c, date: Date.now() })));
+  renderMarkets(cards);
+}
+
+function renderMarkets(cards, cacheTime) {
+  const grid = document.getElementById('mkt-grid');
+  const note = cacheTime ? `<div class="cache-note" style="grid-column:1/-1">⚠️ Quotazioni in cache (${fmtAgo(cacheTime)})</div>` : '';
+  grid.innerHTML = note + cards.map(c => `<div class="mkt-card"><div class="lbl">${c.label}</div><div class="val">${c.val}</div><div class="sub">${c.sub}</div></div>`).join('');
   const tk = cards.map(c => `<span class="tk">${c.label} <b>${c.val}</b> ${c.sub}</span>`).join('');
   document.getElementById('ticker').innerHTML = tk + tk;
 }
 
-/* ================= Orologio e avvio ================= */
+/* ================= Orologio, service worker, avvio ================= */
 function tickClock() {
   const n = new Date();
   document.getElementById('clock-time').textContent = n.toLocaleTimeString('it-IT');
   document.getElementById('clock-date').textContent = n.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 setInterval(tickClock, 1000); tickClock();
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 
 function loadAll() {
   document.getElementById('last-update').textContent = 'agg. ' + fmtTime(new Date());
