@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0b0e14"/>
+  <circle cx="256" cy="256" r="170" fill="none" stroke="#1f2937" stroke-width="10"/>
+  <circle cx="256" cy="256" r="115" fill="none" stroke="#1f2937" stroke-width="8"/>
+  <circle cx="256" cy="256" r="60" fill="none" stroke="#1f2937" stroke-width="6"/>
+  <path d="M256 256 L256 76 A180 180 0 0 1 411 165 Z" fill="#e9c46a" opacity="0.22"/>
+  <line x1="256" y1="256" x2="256" y2="76" stroke="#e9c46a" stroke-width="10" stroke-linecap="round"/>
+  <line x1="76" y1="256" x2="436" y2="256" stroke="#1f2937" stroke-width="6"/>
+  <line x1="256" y1="76" x2="256" y2="436" stroke="#1f2937" stroke-width="6"/>
+  <circle cx="256" cy="256" r="22" fill="#e63946"/>
+  <circle cx="345" cy="180" r="16" fill="#e63946"/>
+  <circle cx="180" cy="330" r="13" fill="#4a90d9"/>
+  <circle cx="330" cy="345" r="13" fill="#e9c46a"/>
+  <text x="256" y="490" font-family="Segoe UI, Arial, sans-serif" font-size="58" font-weight="800" fill="#e5e9f0" text-anchor="middle">EUROWATCH</text>
+</svg>
